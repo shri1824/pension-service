@@ -1,3 +1,54 @@
 spring:
   application:
     name: pension-service
+
+  data:
+    redis:
+      host: localhost
+      port: 6380
+
+  http:
+    clients:
+      # Applied by Boot to every RestClient built from the injected builder.
+      # A slow core fails fast instead of holding up the caller.
+      connect-timeout: 1s
+      read-timeout: 2s
+
+  security:
+    oauth2:
+      # Incoming calls: only the portal-bff may call this service (service token, audience pension-service).
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/pension
+          audiences: pension-service
+      # Outgoing calls: this service gets its own token for the core (client credentials).
+      client:
+        registration:
+          core:
+            provider: keycloak
+            client-id: pension-service
+            # No default on purpose. Boot keeps an unresolved placeholder as literal text, so
+            # CoreClientConfig.requireClientSecret makes the service refuse to start without it.
+            client-secret: ${PENSION_SERVICE_CLIENT_SECRET}
+            authorization-grant-type: client_credentials
+            scope: core.read
+        provider:
+          keycloak:
+            # Explicit token-uri (not issuer-uri) so the service can start even when Keycloak is down.
+            token-uri: http://localhost:8180/realms/pension/protocol/openid-connect/token
+
+server:
+  port: 8082
+
+core-api:
+  base-url: http://localhost:8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
