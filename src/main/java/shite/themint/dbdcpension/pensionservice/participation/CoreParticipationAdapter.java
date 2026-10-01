@@ -2,6 +2,7 @@ package shite.themint.dbdcpension.pensionservice.participation;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.oauth2.core.OAuth2AuthorizationException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -10,6 +11,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import shite.themint.dbdcpension.pensionservice.config.CacheConfig;
 import shite.themint.dbdcpension.pensionservice.error.CoreResponseException;
 import shite.themint.dbdcpension.pensionservice.error.CoreUnavailableException;
 
@@ -31,7 +33,9 @@ class CoreParticipationAdapter implements ParticipationPort {
 		this.coreRestClient = coreRestClient;
 	}
 
+	// Only successes are cached: an exception is never stored, so a core outage or a 404 is retried next time.
 	@Override
+	@Cacheable(cacheNames = CacheConfig.PARTICIPATION_CACHE, key = "#participantId")
 	public Participation getParticipation(String participantId) {
 		CoreParticipationResponse response;
 		try {
