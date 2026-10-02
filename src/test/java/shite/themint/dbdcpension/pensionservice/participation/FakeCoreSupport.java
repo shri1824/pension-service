@@ -17,6 +17,23 @@ public final class FakeCoreSupport {
 			x -> respond(x, "{\"access_token\":\"fake-token\",\"token_type\":\"Bearer\",\"expires_in\":300}"));
 	private final HttpServer coreServer = start("/core", x -> {
 		coreCalls.incrementAndGet();
+		if (x.getRequestURI().getPath().contains("/transactions/")) {
+			respond(x, """
+					{"transactionNumber":"T20260914-001","transactionDate":"2026-09-14","transactionKind":"INVESTMENT_WITHDRAWAL",
+					 "currencyCode":"EUR","amount":-862.46,
+					 "lines":[{"lineCode":"DEFINED_CONTRIBUTION","amount":-862.51},{"lineCode":"BONUS","amount":-0.01},
+					          {"lineCode":"ADMINISTRATION_COSTS","amount":0.04}],
+					 "fundMovements":[{"fundCode":"FUND-MIX-N","fundName":"Example Mixed Fund Neutral","unitCount":-6.502952,
+					                   "priceDate":"2026-09-14","unitPrice":132.63,"movementValue":-862.46}]}""");
+			return;
+		}
+		if (x.getRequestURI().getPath().endsWith("/transactions")) {
+			respond(x, """
+					{"participantId":"M1001","currencyCode":"EUR","page":0,"pageSize":10,"totalCount":14,"transactions":[
+					 {"transactionNumber":"T20260914-001","transactionDate":"2026-09-14",
+					  "transactionKind":"INVESTMENT_WITHDRAWAL","amount":-862.46}]}""");
+			return;
+		}
 		if (x.getRequestURI().getPath().endsWith("/holdings")) {
 			respond(x, """
 					{"participantId":"M1001","currencyCode":"EUR","positions":[

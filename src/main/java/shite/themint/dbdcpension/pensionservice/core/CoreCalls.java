@@ -32,10 +32,18 @@ public final class CoreCalls {
 	 * @throws CoreResponseException        the core answered with something we cannot read
 	 */
 	public static <T> T get(RestClient coreRestClient, String path, String participantId, Class<T> type) {
+		return getWithVariables(coreRestClient, path, type, participantId);
+	}
+
+	/**
+	 * Same as {@link #get}, for a URI template with more variables (for example a transaction number or
+	 * paging parameters). Every variable is encoded, so none of them can change the path or the query.
+	 */
+	public static <T> T getWithVariables(RestClient coreRestClient, String path, Class<T> type, Object... uriVariables) {
 		T response;
 		try {
-			// The id is a URI variable, so it is encoded and cannot change the path.
-			response = coreRestClient.get().uri(path, participantId).retrieve().body(type);
+			// Every value is a URI variable, so it is encoded and cannot change the path.
+			response = coreRestClient.get().uri(path, uriVariables).retrieve().body(type);
 		}
 		catch (HttpClientErrorException.NotFound ex) {
 			throw new ParticipantNotFoundException();
