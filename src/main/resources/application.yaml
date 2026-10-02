@@ -6,6 +6,10 @@ spring:
     redis:
       host: localhost
       port: 6380
+      # Redis is only an optimisation. Without short limits, a stopped Redis would hold every request
+      # (Lettuce queues commands while it reconnects and waits up to 60 s by default).
+      timeout: 300ms
+      connect-timeout: 300ms
 
   http:
     clients:
