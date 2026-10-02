@@ -18,6 +18,7 @@ import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
+import shite.themint.dbdcpension.pensionservice.holdings.Holdings;
 import shite.themint.dbdcpension.pensionservice.participation.Participation;
 import shite.themint.dbdcpension.pensionservice.projection.Projection;
 import shite.themint.dbdcpension.pensionservice.valuation.Valuation;
@@ -35,6 +36,7 @@ public class CacheConfig implements CachingConfigurer {
 	public static final String PARTICIPATION_CACHE = "participation";
 	public static final String PROJECTION_CACHE = "projection";
 	public static final String VALUATION_CACHE = "valuation";
+	public static final String HOLDINGS_CACHE = "holdings";
 
 	private static final Logger log = LoggerFactory.getLogger(CacheConfig.class);
 
@@ -44,6 +46,7 @@ public class CacheConfig implements CachingConfigurer {
 				.withCacheConfiguration(PARTICIPATION_CACHE, cache(Participation.class, properties.participationTtl()))
 				.withCacheConfiguration(PROJECTION_CACHE, cache(Projection.class, properties.projectionTtl()))
 				.withCacheConfiguration(VALUATION_CACHE, cache(Valuation.class, properties.valuationTtl()))
+				.withCacheConfiguration(HOLDINGS_CACHE, cache(Holdings.class, properties.holdingsTtl()))
 				.build();
 	}
 

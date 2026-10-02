@@ -48,6 +48,7 @@ pension-cache:
   participation-ttl: 15m
   projection-ttl: 6h
   valuation-ttl: 1h
+  holdings-ttl: 1h
 
 core-api:
   base-url: http://localhost:8081

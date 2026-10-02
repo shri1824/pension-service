@@ -17,6 +17,13 @@ public final class FakeCoreSupport {
 			x -> respond(x, "{\"access_token\":\"fake-token\",\"token_type\":\"Bearer\",\"expires_in\":300}"));
 	private final HttpServer coreServer = start("/core", x -> {
 		coreCalls.incrementAndGet();
+		if (x.getRequestURI().getPath().endsWith("/holdings")) {
+			respond(x, """
+					{"participantId":"M1001","currencyCode":"EUR","positions":[
+					 {"fundCode":"FUND-MIX-N","fundName":"Example Mixed Fund Neutral","unitCount":195.228665,
+					  "priceDate":"2026-09-24","unitPrice":134.19,"positionValue":26197.32}]}""");
+			return;
+		}
 		if (x.getRequestURI().getPath().endsWith("/valuation")) {
 			respond(x, """
 					{"participantId":"M1001","currencyCode":"EUR","premiumsPaidTotal":20769.28,
