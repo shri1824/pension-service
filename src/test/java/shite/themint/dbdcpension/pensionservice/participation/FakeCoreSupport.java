@@ -10,27 +10,39 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 /** Two tiny local HTTP servers playing Keycloak's token endpoint and the core, counting the core calls. */
-final class FakeCoreSupport {
+public final class FakeCoreSupport {
 
-	final AtomicInteger coreCalls = new AtomicInteger();
+	public final AtomicInteger coreCalls = new AtomicInteger();
 	private final HttpServer tokenServer = start("/token",
 			x -> respond(x, "{\"access_token\":\"fake-token\",\"token_type\":\"Bearer\",\"expires_in\":300}"));
 	private final HttpServer coreServer = start("/core", x -> {
 		coreCalls.incrementAndGet();
+		if (x.getRequestURI().getPath().endsWith("/valuation")) {
+			respond(x, """
+					{"participantId":"M1001","currencyCode":"EUR","premiumsPaidTotal":20769.28,
+					 "marketValue":25992.60,"valuationDate":"2026-09-24"}""");
+			return;
+		}
+		if (x.getRequestURI().getPath().endsWith("/projection")) {
+			respond(x, """
+					{"participantId":"M1001","pensionAge":68,"curr":"EUR","calculationDate":"2026-09-30",
+					 "middleScenario":369.42,"lowScenario":117.10,"highScenario":881.55}""");
+			return;
+		}
 		respond(x, """
 				{"participantId":"M1001","schemeCode":"SCH-001","employerName":"Example Employer B.V.",
 				 "planType":"DC","startDate":"2019-09-01","endDate":null}""");
 	});
 
-	String tokenUri() {
+	public String tokenUri() {
 		return "http://localhost:" + tokenServer.getAddress().getPort() + "/token";
 	}
 
-	String coreBaseUrl() {
+	public String coreBaseUrl() {
 		return "http://localhost:" + coreServer.getAddress().getPort();
 	}
 
-	void stop() {
+	public void stop() {
 		tokenServer.stop(0);
 		coreServer.stop(0);
 	}

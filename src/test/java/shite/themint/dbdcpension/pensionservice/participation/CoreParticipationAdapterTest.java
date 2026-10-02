@@ -22,6 +22,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import shite.themint.dbdcpension.pensionservice.error.CoreResponseException;
+import shite.themint.dbdcpension.pensionservice.error.ParticipantNotFoundException;
 import shite.themint.dbdcpension.pensionservice.error.CoreUnavailableException;
 
 /**

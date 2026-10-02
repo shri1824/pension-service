@@ -5,7 +5,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import shite.themint.dbdcpension.pensionservice.participation.ParticipantNotFoundException;
+
 
 /**
  * Turns our exceptions into RFC 9457 problem details. The messages are short and generic:

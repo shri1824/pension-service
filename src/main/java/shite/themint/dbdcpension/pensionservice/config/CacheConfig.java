@@ -1,5 +1,7 @@
 package shite.themint.dbdcpension.pensionservice.config;
 
+import java.time.Duration;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -17,6 +19,8 @@ import org.springframework.data.redis.serializer.RedisSerializationContext.Seria
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import shite.themint.dbdcpension.pensionservice.participation.Participation;
+import shite.themint.dbdcpension.pensionservice.projection.Projection;
+import shite.themint.dbdcpension.pensionservice.valuation.Valuation;
 
 /**
  * Redis cache in front of the core. Redis is an optimisation, never a dependency: if it is
@@ -29,23 +33,28 @@ import shite.themint.dbdcpension.pensionservice.participation.Participation;
 public class CacheConfig implements CachingConfigurer {
 
 	public static final String PARTICIPATION_CACHE = "participation";
+	public static final String PROJECTION_CACHE = "projection";
+	public static final String VALUATION_CACHE = "valuation";
 
 	private static final Logger log = LoggerFactory.getLogger(CacheConfig.class);
 
 	@Bean
 	RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory, CacheProperties properties) {
-		// A typed JSON serializer (Jackson 3): readable in redis-cli and no class names stored in the data.
-		RedisCacheConfiguration participation = RedisCacheConfiguration.defaultCacheConfig()
+		return RedisCacheManager.builder(connectionFactory)
+				.withCacheConfiguration(PARTICIPATION_CACHE, cache(Participation.class, properties.participationTtl()))
+				.withCacheConfiguration(PROJECTION_CACHE, cache(Projection.class, properties.projectionTtl()))
+				.withCacheConfiguration(VALUATION_CACHE, cache(Valuation.class, properties.valuationTtl()))
+				.build();
+	}
+
+	/** A typed JSON serializer (Jackson 3): readable in redis-cli and no class names stored in the data. */
+	private static <T> RedisCacheConfiguration cache(Class<T> type, Duration ttl) {
+		return RedisCacheConfiguration.defaultCacheConfig()
 				.prefixCacheNameWith("pension:")
-				.entryTtl(properties.participationTtl())
+				.entryTtl(ttl)
 				.disableCachingNullValues()
 				.serializeKeysWith(SerializationPair.fromSerializer(StringRedisSerializer.UTF_8))
-				.serializeValuesWith(SerializationPair.fromSerializer(
-						new JacksonJsonRedisSerializer<>(Participation.class)));
-
-		return RedisCacheManager.builder(connectionFactory)
-				.withCacheConfiguration(PARTICIPATION_CACHE, participation)
-				.build();
+				.serializeValuesWith(SerializationPair.fromSerializer(new JacksonJsonRedisSerializer<>(type)));
 	}
 
 	@Override

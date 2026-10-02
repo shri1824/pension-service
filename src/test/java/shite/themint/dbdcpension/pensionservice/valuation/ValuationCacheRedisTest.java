@@ -1,6 +1,7 @@
-package shite.themint.dbdcpension.pensionservice.participation;
+package shite.themint.dbdcpension.pensionservice.valuation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -15,21 +16,22 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import shite.themint.dbdcpension.pensionservice.participation.FakeCoreSupport;
 
 /**
  * Against the real Redis from docker-compose (localhost:6380). Skipped, not failed, when Redis
- * is not running, so the build does not depend on Docker.
+ * is not running, so the build does not depend on Docker. Proves that the valuation, including the
+ * return worked out by us, survives the round trip through Redis with its cents intact.
  */
 @SpringBootTest(properties = {
 		"spring.security.oauth2.client.registration.core.client-secret=test-secret",
-		"pension-cache.participation-ttl=2m",
+		"pension-cache.valuation-ttl=90m",
 		// These tests are about caching, not timeouts: a cold JVM on a busy machine needs more than the production 300 ms.
 		"spring.data.redis.timeout=5s",
 		"spring.data.redis.connect-timeout=5s" })
-class ParticipationCacheRedisTest {
+class ValuationCacheRedisTest {
 
-	private static final String KEY = "pension:participation::M1001";
+	private static final String KEY = "pension:valuation::M1001";
 
 	private static final FakeCoreSupport fake = new FakeCoreSupport();
 
@@ -40,7 +42,7 @@ class ParticipationCacheRedisTest {
 	}
 
 	@Autowired
-	private ParticipationPort port;
+	private ValuationPort port;
 
 	@Autowired
 	private StringRedisTemplate redis;
@@ -61,29 +63,31 @@ class ParticipationCacheRedisTest {
 	}
 
 	/**
-	 * The cache write can reach Redis a moment after the call that caused it has returned (seen with the
-	 * Redis MONITOR on a busy machine). Waiting for it makes the test about the cache, not about timing.
+	 * The cache write can reach Redis a moment after the call that caused it has returned. Waiting for
+	 * it makes the test about the cache, not about timing.
 	 */
 	private void waitUntilStored() {
 		org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).until(() -> redis.hasKey(KEY));
 	}
 
 	@Test
-	void secondCallIsServedFromRedis_asReadableJson_withATtl() {
+	void secondCallIsServedFromRedis_asReadableJson_withTheValuationTtl() {
 		redis.delete(KEY);
 
-		Participation first = port.getParticipation("M1001");
+		Valuation first = port.getValuation("M1001");
 		waitUntilStored();
-		Participation second = port.getParticipation("M1001");
+		Valuation second = port.getValuation("M1001");
 
 		assertThat(second).isEqualTo(first);
-		assertThat(fake.coreCalls.get()).isEqualTo(1);
+		assertThat(second.investmentReturn().percentage()).isEqualByComparingTo("25.15");
+		assertThat(fake.coreCalls.get()).as("calls that reached the core").isEqualTo(1);
 
 		assertThat(redis.opsForValue().get(KEY))
-				.contains("\"schemeId\":\"SCH-001\"")
-				.contains("\"participatedFrom\":\"2019-09-01\"")
+				.contains("\"currency\":\"EUR\"")
+				.contains("\"valuedOn\":\"2026-09-24\"")
+				.contains("\"investmentReturn\"")
 				.doesNotContain("class");
-		assertThat(redis.getExpire(KEY)).isBetween(1L, Duration.ofMinutes(2).toSeconds());
+		assertThat(redis.getExpire(KEY)).isBetween(Duration.ofMinutes(60).toSeconds(), Duration.ofMinutes(90).toSeconds());
 
 		redis.delete(KEY);
 	}

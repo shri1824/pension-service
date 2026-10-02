@@ -1,4 +1,4 @@
-package shite.themint.dbdcpension.pensionservice.participation;
+package shite.themint.dbdcpension.pensionservice.error;
 
 /**
  * The member has no participation. Becomes a 404 problem detail at the API.

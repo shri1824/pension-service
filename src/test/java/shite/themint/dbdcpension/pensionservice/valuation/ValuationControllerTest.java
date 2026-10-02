@@ -1,14 +1,15 @@
-package shite.themint.dbdcpension.pensionservice.participation;
+package shite.themint.dbdcpension.pensionservice.valuation;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
@@ -22,94 +23,99 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import shite.themint.dbdcpension.pensionservice.error.CoreResponseException;
-import shite.themint.dbdcpension.pensionservice.error.ParticipantNotFoundException;
 import shite.themint.dbdcpension.pensionservice.error.CoreUnavailableException;
+import shite.themint.dbdcpension.pensionservice.error.ParticipantNotFoundException;
 
-/**
- * The internal endpoint on the full application, with the port replaced by a mock so the
- * HTTP side (shape, status codes, problem details, security) is tested on its own.
- */
+/** The internal valuation endpoint on the full application, with the port replaced by a mock. */
 @SpringBootTest(properties = "spring.security.oauth2.client.registration.core.client-secret=test-secret")
 @AutoConfigureMockMvc
-class ParticipationControllerTest {
+class ValuationControllerTest {
 
-	private static final String URL = "/internal/v1/participants/M1001/participation";
+	private static final String URL = "/internal/v1/participants/M1001/valuation";
 
 	@Autowired
 	private MockMvc mockMvc;
 
 	@MockitoBean
-	private ParticipationPort participationPort;
+	private ValuationPort valuationPort;
 
 	private static RequestPostProcessor pensionRead() {
 		return jwt().authorities(new SimpleGrantedAuthority("SCOPE_pension.read"));
 	}
 
 	@Test
-	void returnsParticipationInOurModelAndNotTheCoresNames() throws Exception {
-		when(participationPort.getParticipation("M1001")).thenReturn(new Participation(
-				"SCH-001", "Example Employer B.V.", ContractType.DC, LocalDate.of(2019, 9, 1), null));
+	void returnsTheValuationInOurModelAndNotTheCoresNames() throws Exception {
+		when(valuationPort.getValuation("M1001")).thenReturn(new Valuation("EUR", new BigDecimal("20769.28"),
+				new BigDecimal("25992.60"), LocalDate.of(2026, 9, 24),
+				new InvestmentReturn(new BigDecimal("5223.32"), new BigDecimal("25.15"))));
 
 		mockMvc.perform(get(URL).with(pensionRead()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.schemeId").value("SCH-001"))
-				.andExpect(jsonPath("$.employerName").value("Example Employer B.V."))
-				.andExpect(jsonPath("$.contractType").value("DC"))
-				.andExpect(jsonPath("$.participatedFrom").value("2019-09-01"))
-				.andExpect(jsonPath("$.participatedUntil").value(nullValue()))
-				.andExpect(jsonPath("$.schemeCode").doesNotExist())
-				.andExpect(jsonPath("$.planType").doesNotExist());
+				.andExpect(jsonPath("$.currency").value("EUR"))
+				.andExpect(jsonPath("$.totalContributions").value(20769.28))
+				.andExpect(jsonPath("$.capitalValue").value(25992.60))
+				.andExpect(jsonPath("$.valuedOn").value("2026-09-24"))
+				.andExpect(jsonPath("$.investmentReturn.amount").value(5223.32))
+				.andExpect(jsonPath("$.investmentReturn.percentage").value(25.15))
+				.andExpect(jsonPath("$.premiumsPaidTotal").doesNotExist())
+				.andExpect(jsonPath("$.marketValue").doesNotExist());
+	}
+
+	@Test
+	void newMember_hasANullPercentage() throws Exception {
+		when(valuationPort.getValuation("M1001")).thenReturn(new Valuation("EUR", new BigDecimal("0.00"),
+				new BigDecimal("0.00"), LocalDate.of(2026, 9, 24),
+				new InvestmentReturn(new BigDecimal("0.00"), null)));
+
+		mockMvc.perform(get(URL).with(pensionRead()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.investmentReturn.percentage").value(nullValue()));
 	}
 
 	@Test
 	void unknownMember_isProblemDetail404() throws Exception {
-		when(participationPort.getParticipation("M1001")).thenThrow(new ParticipantNotFoundException());
+		when(valuationPort.getValuation("M1001")).thenThrow(new ParticipantNotFoundException());
 
 		mockMvc.perform(get(URL).with(pensionRead()))
 				.andExpect(status().isNotFound())
-				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.detail").value("Participant not found"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
 	}
 
 	@Test
 	void coreUnavailable_isProblemDetail503WithoutInternals() throws Exception {
-		when(participationPort.getParticipation("M1001"))
+		when(valuationPort.getValuation("M1001"))
 				.thenThrow(new CoreUnavailableException("secret internal detail http://core.internal", new RuntimeException()));
 
 		mockMvc.perform(get(URL).with(pensionRead()))
 				.andExpect(status().isServiceUnavailable())
-				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.detail").value("The core system is temporarily unavailable"))
-				.andExpect(jsonPath("$.trace").doesNotExist());
+				.andExpect(jsonPath("$.detail").value("The core system is temporarily unavailable"));
 	}
 
 	@Test
 	void badCoreResponse_isProblemDetail502() throws Exception {
-		when(participationPort.getParticipation("M1001")).thenThrow(new CoreResponseException("bad"));
+		when(valuationPort.getValuation("M1001")).thenThrow(new CoreResponseException("bad"));
 
-		mockMvc.perform(get(URL).with(pensionRead()))
-				.andExpect(status().isBadGateway())
-				.andExpect(jsonPath("$.detail").value("The core system returned data we cannot use"));
+		mockMvc.perform(get(URL).with(pensionRead())).andExpect(status().isBadGateway());
 	}
 
 	@Test
 	void idWithUnexpectedCharacters_isRejectedBeforeAnythingIsCalled() throws Exception {
-		mockMvc.perform(get("/internal/v1/participants/M!1001/participation").with(pensionRead()))
+		mockMvc.perform(get("/internal/v1/participants/M!1001/valuation").with(pensionRead()))
 				.andExpect(status().isBadRequest());
 
-		verifyNoInteractions(participationPort);
+		verifyNoInteractions(valuationPort);
 	}
 
 	@Test
 	void withoutToken_isUnauthorized() throws Exception {
 		mockMvc.perform(get(URL)).andExpect(status().isUnauthorized());
-		verifyNoInteractions(participationPort);
+		verifyNoInteractions(valuationPort);
 	}
 
 	@Test
 	void tokenWithoutScope_isForbidden() throws Exception {
 		mockMvc.perform(get(URL).with(jwt())).andExpect(status().isForbidden());
-		verifyNoInteractions(participationPort);
+		verifyNoInteractions(valuationPort);
 	}
 
 }

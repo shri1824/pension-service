@@ -8,7 +8,7 @@ package shite.themint.dbdcpension.pensionservice.participation;
 public interface ParticipationPort {
 
 	/**
-	 * @throws ParticipantNotFoundException        the member has no participation
+	 * @throws shite.themint.dbdcpension.pensionservice.error.ParticipantNotFoundException        the member has no participation
 	 * @throws shite.themint.dbdcpension.pensionservice.error.CoreUnavailableException the core could not be reached or failed
 	 * @throws shite.themint.dbdcpension.pensionservice.error.CoreResponseException    the core answered with data we cannot use
 	 */
