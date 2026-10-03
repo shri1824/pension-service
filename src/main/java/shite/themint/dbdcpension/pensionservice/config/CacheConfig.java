@@ -19,6 +19,7 @@ import org.springframework.data.redis.serializer.RedisSerializationContext.Seria
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import shite.themint.dbdcpension.pensionservice.holdings.Holdings;
+import shite.themint.dbdcpension.pensionservice.investmentprofile.InvestmentProfileData;
 import shite.themint.dbdcpension.pensionservice.participation.Participation;
 import shite.themint.dbdcpension.pensionservice.projection.Projection;
 import shite.themint.dbdcpension.pensionservice.transactions.TransactionDetail;
@@ -41,6 +42,7 @@ public class CacheConfig implements CachingConfigurer {
 	public static final String HOLDINGS_CACHE = "holdings";
 	public static final String TRANSACTIONS_CACHE = "transactions";
 	public static final String TRANSACTION_DETAIL_CACHE = "transaction-detail";
+	public static final String INVESTMENT_PROFILE_CACHE = "investment-profile";
 
 	private static final Logger log = LoggerFactory.getLogger(CacheConfig.class);
 
@@ -54,6 +56,8 @@ public class CacheConfig implements CachingConfigurer {
 				.withCacheConfiguration(TRANSACTIONS_CACHE, cache(TransactionList.class, properties.transactionsTtl()))
 				.withCacheConfiguration(TRANSACTION_DETAIL_CACHE,
 						cache(TransactionDetail.class, properties.transactionDetailTtl()))
+				.withCacheConfiguration(INVESTMENT_PROFILE_CACHE,
+						cache(InvestmentProfileData.class, properties.investmentProfileTtl()))
 				.build();
 	}
 

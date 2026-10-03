@@ -11,6 +11,22 @@ spring:
       timeout: 300ms
       connect-timeout: 300ms
 
+  kafka:
+    # Local dev broker from dev/docker-compose.yml (host port 9094). Used only for investment changes.
+    bootstrap-servers: localhost:9094
+    consumer:
+      # A new consumer group reads the topic from the start (evicting an entry that is not there does no harm).
+      # The offset is committed after each processed batch, i.e. after the cache entry was evicted.
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    producer:
+      # Used only to park events on the dead-letter topic.
+      acks: all
+      properties:
+        max.block.ms: 3000
+        request.timeout.ms: 3000
+        delivery.timeout.ms: 5000
+
   http:
     clients:
       # Applied by Boot to every RestClient built from the injected builder.
@@ -51,9 +67,17 @@ pension-cache:
   holdings-ttl: 1h
   transactions-ttl: 5m
   transaction-detail-ttl: 10m
+  investment-profile-ttl: 1h
 
 core-api:
   base-url: http://localhost:8081
+
+# What the back office reports back (see package investmentchange): a completed request evicts the cached profile.
+pension-service:
+  investment-change:
+    kafka-enabled: true
+    status-changed-topic: pension.change-request.status-changed
+    group-id: pension-service-profile-cache
 
 management:
   endpoints:

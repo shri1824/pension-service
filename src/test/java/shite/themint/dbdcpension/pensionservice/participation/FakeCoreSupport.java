@@ -17,6 +17,12 @@ public final class FakeCoreSupport {
 			x -> respond(x, "{\"access_token\":\"fake-token\",\"token_type\":\"Bearer\",\"expires_in\":300}"));
 	private final HttpServer coreServer = start("/core", x -> {
 		coreCalls.incrementAndGet();
+		if (x.getRequestURI().getPath().endsWith("/investment-profile")) {
+			respond(x, """
+					{"participantId":"M1001","riskProfile":"NEUTRAL","payoutPreference":"FIXED_ANNUITY","planType":"DC",
+					 "retirementDate":"2056-06-01"}""");
+			return;
+		}
 		if (x.getRequestURI().getPath().contains("/transactions/")) {
 			respond(x, """
 					{"transactionNumber":"T20260914-001","transactionDate":"2026-09-14","transactionKind":"INVESTMENT_WITHDRAWAL",
